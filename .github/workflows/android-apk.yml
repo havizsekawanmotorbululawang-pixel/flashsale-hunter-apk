@@ -1,3 +1,4 @@
+
 name: Build FlashSale Hunter APK
 
 on:
@@ -13,12 +14,41 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Unpack Android project
         run: unzip -q FlashSaleHunterAndroid_Project.zip -d project
+
+      - name: Fix Java and Kotlin target
+        working-directory: project
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("app/build.gradle.kts")
+          s = p.read_text()
+
+          marker = "    buildFeatures { compose = true }"
+
+          block = """    compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+
+          """
+
+          if "sourceCompatibility = JavaVersion.VERSION_17" not in s:
+              s = s.replace(marker, block + marker)
+
+          p.write_text(s)
+          PY
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -36,7 +66,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: FlashSaleHunter-debug-apk
+          name: FlashSale-Hunter-debug-apk
           path: project/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7
